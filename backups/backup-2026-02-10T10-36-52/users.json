@@ -1,0 +1,456 @@
+[
+  {
+    "_id": "6949f240c38f14fe63c3ec6b",
+    "email": "elijah.davis@company.com",
+    "password": "$2b$12$JtepjK7RqZgJdWTBOlgBEeJBLvp6eawZRYFPYJzfFjKenT2DM/PSa",
+    "firstName": "Elijah",
+    "lastName": "Davis",
+    "phone": "+15096879878",
+    "globalRole": "admin",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:04.125Z",
+    "updatedAt": "2026-01-14T12:31:39.719Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec71",
+    "joinedCompanyAt": "2025-12-23T01:37:06.114Z"
+  },
+  {
+    "_id": "6949f240c38f14fe63c3ec6d",
+    "email": "ava.jackson@yahoo.com",
+    "password": "$2b$12$3eIOUZEUXZCa82c82BM9beXirnVNNFMXG9UMGcqZl5c.GetLaxBNy",
+    "firstName": "Ava",
+    "lastName": "Jackson",
+    "phone": "+12811381168",
+    "globalRole": "admin",
+    "preferences": {
+      "theme": "dark",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:04.487Z",
+    "updatedAt": "2026-01-14T12:31:39.719Z",
+    "__v": 1,
+    "companyId": "6949f241c38f14fe63c3ec75",
+    "joinedCompanyAt": "2025-12-23T01:37:06.162Z"
+  },
+  {
+    "_id": "6949f240c38f14fe63c3ec6f",
+    "email": "evelyn.williams@company.com",
+    "password": "$2b$12$dSJqZEsN7cWuXwmWwJ1X.egNC/aZCic7RBlKtTeMqzgh85NSYcTHW",
+    "firstName": "Evelyn",
+    "lastName": "Williams",
+    "phone": "+12281256776",
+    "globalRole": "admin",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:04.787Z",
+    "updatedAt": "2026-01-14T12:31:39.719Z",
+    "__v": 1,
+    "companyId": "6949f242c38f14fe63c3ec79",
+    "joinedCompanyAt": "2025-12-23T01:37:06.205Z"
+  },
+  {
+    "_id": "6949f242c38f14fe63c3ec83",
+    "email": "abigail.garcia@outlook.com",
+    "password": "$2b$12$boVSMWE5SYjQqKjpfNUMpO065S2x2TwMvNY2XRufaKzQNsq1LXE9O",
+    "firstName": "Abigail",
+    "lastName": "Garcia",
+    "phone": "+12821188803",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "auto",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:06.531Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec71",
+    "joinedCompanyAt": "2025-12-23T01:37:07.445Z"
+  },
+  {
+    "_id": "6949f242c38f14fe63c3ec85",
+    "email": "isabella.hernandez@yahoo.com",
+    "password": "$2b$12$zJjykFxCWAXMiozO8hKC5eZuq1fbr6iYX4i4IiVv1xefXv50ZqnwO",
+    "firstName": "Isabella",
+    "lastName": "Hernandez",
+    "phone": "+12166203431",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "auto",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:06.827Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec71",
+    "joinedCompanyAt": "2025-12-23T01:37:07.489Z"
+  },
+  {
+    "_id": "6949f243c38f14fe63c3ec87",
+    "email": "abigail.martinez@company.com",
+    "password": "$2b$12$drAiKaSO.haphSVHL41JJuv.3tVZTpw2kMCZH8AZC6/nG/ea.QPSS",
+    "firstName": "Abigail",
+    "lastName": "Martinez",
+    "phone": "+15471489143",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "auto",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:07.114Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec73",
+    "joinedCompanyAt": "2025-12-23T01:37:07.530Z"
+  },
+  {
+    "_id": "6949f243c38f14fe63c3ec89",
+    "email": "lucas.moore@gmail.com",
+    "password": "$2b$12$69SokduRK7dGwm9Bh11JLOYAZcUTI9N82bag9vh2mq7ZPMr/hSE9i",
+    "firstName": "Lucas",
+    "lastName": "Moore",
+    "phone": "+15651906817",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "auto",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:07.402Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f241c38f14fe63c3ec75",
+    "joinedCompanyAt": "2025-12-23T01:37:07.573Z"
+  },
+  {
+    "_id": "6949f243c38f14fe63c3ec93",
+    "email": "william.williams@outlook.com",
+    "password": "$2b$12$BJ.tTcMXAO/2eajgYvDqTeQLb7th2LdlOOOvCkqwmLgWCFumsVvhm",
+    "firstName": "William",
+    "lastName": "Williams",
+    "phone": "+12229489845",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "dark",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:07.866Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec71",
+    "joinedCompanyAt": "2025-12-23T01:37:13.301Z"
+  },
+  {
+    "_id": "6949f245c38f14fe63c3ec95",
+    "email": "sophia.anderson@company.com",
+    "password": "$2b$12$3glZbYwwPd3qzjG0QIq3GugwqUsZmYxiKGCYTz9YbbdDSPRkkLYIG",
+    "firstName": "Sophia",
+    "lastName": "Anderson",
+    "phone": "+15754661601",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:09.227Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec73",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f245c38f14fe63c3ec97",
+    "email": "ethan.taylor@yahoo.com",
+    "password": "$2b$12$r1V3EQpYt6Fhxz0aE35kQeZu2YBJQu01IoSZ/d68T3ueSIV9cV0rS",
+    "firstName": "Ethan",
+    "lastName": "Taylor",
+    "phone": "+16383964976",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:09.517Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f241c38f14fe63c3ec75",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f245c38f14fe63c3ec99",
+    "email": "alexander.johnson@company.com",
+    "password": "$2b$12$5S1gxwGwcq6dqbM5FyvrfOgtgSrgxSYXavhGyHR/7KQtJCCf/Leoq",
+    "firstName": "Alexander",
+    "lastName": "Johnson",
+    "phone": "+19534720473",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:09.808Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f242c38f14fe63c3ec77",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f246c38f14fe63c3ec9b",
+    "email": "liam.smith@outlook.com",
+    "password": "$2b$12$.3gddHOqx5oGh0pxtXNXGuJglv8iUpTdXvb1aYq2wZImfvXapIJHW",
+    "firstName": "Liam",
+    "lastName": "Smith",
+    "phone": "+18130762531",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "dark",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:10.096Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f242c38f14fe63c3ec79",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f246c38f14fe63c3ec9d",
+    "email": "harper.miller@outlook.com",
+    "password": "$2b$12$1uemb9Iqd0ChIB8tYNZLE.rrpNMWkq4gM2HId6CEkhT92rpuggpOu",
+    "firstName": "Harper",
+    "lastName": "Miller",
+    "phone": "+12018109560",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:10.386Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec71",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f246c38f14fe63c3ec9f",
+    "email": "mason.hernandez@outlook.com",
+    "password": "$2b$12$De0.nBm7YTmXD0hfP0l1euI9v6SSHGJ2SM8wP5EDKw5DMCOwX7bYC",
+    "firstName": "Mason",
+    "lastName": "Hernandez",
+    "phone": "+17689965437",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:10.666Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec73",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f247c38f14fe63c3eca1",
+    "email": "alexander.smith@gmail.com",
+    "password": "$2b$12$ESRpNTrHKxl.t/mK4igwV.EEVuzW6HAdl3dAmEYKHneBVNuGFH8sm",
+    "firstName": "Alexander",
+    "lastName": "Smith",
+    "phone": "+19475137815",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "dark",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:11.231Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f241c38f14fe63c3ec75",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f247c38f14fe63c3eca3",
+    "email": "abigail.anderson@company.com",
+    "password": "$2b$12$85qfue5Wh8JOoBKHrRpJ1eB1aIeLNEKn6m0sQJU.bRK9gOokH1ZvO",
+    "firstName": "Abigail",
+    "lastName": "Anderson",
+    "phone": "+17504149645",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "dark",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:11.517Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f242c38f14fe63c3ec77",
+    "joinedCompanyAt": "2025-12-23T01:37:13.302Z"
+  },
+  {
+    "_id": "6949f247c38f14fe63c3eca5",
+    "email": "mason.jackson@outlook.com",
+    "password": "$2b$12$6MhgKVORddIqH3ytDHWdjewpEWjLQ9DJM7.JcWLJph4ylESUBjtEy",
+    "firstName": "Mason",
+    "lastName": "Jackson",
+    "phone": "+19381996188",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:11.801Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f242c38f14fe63c3ec79",
+    "joinedCompanyAt": "2025-12-23T01:37:13.303Z"
+  },
+  {
+    "_id": "6949f248c38f14fe63c3eca7",
+    "email": "evelyn.williams@yahoo.com",
+    "password": "$2b$12$2F3BIhq0x0ud4WzQPzg8quNmIcnMK0U/v/efuaeZ2HwkR7GPE9tia",
+    "firstName": "Evelyn",
+    "lastName": "Williams",
+    "phone": "+16824084113",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:12.087Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec71",
+    "joinedCompanyAt": "2025-12-23T01:37:13.303Z"
+  },
+  {
+    "_id": "6949f248c38f14fe63c3eca9",
+    "email": "william.brown@company.com",
+    "password": "$2b$12$MCfRNeE.Jlcz3qXrnuajjew10PK/YhMkzaGWmxb6fpfJhqVSAsXXq",
+    "firstName": "William",
+    "lastName": "Brown",
+    "phone": "+17207933540",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:12.388Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f240c38f14fe63c3ec73",
+    "joinedCompanyAt": "2025-12-23T01:37:13.303Z"
+  },
+  {
+    "_id": "6949f248c38f14fe63c3ecab",
+    "email": "sophia.smith@company.com",
+    "password": "$2b$12$tTb562lXPXnG4RNPFtsOd.Qj4FPO2TfJr27IHqQWga/nNJxTKpyL2",
+    "firstName": "Sophia",
+    "lastName": "Smith",
+    "phone": "+17689115222",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:12.680Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f241c38f14fe63c3ec75",
+    "joinedCompanyAt": "2025-12-23T01:37:13.303Z"
+  },
+  {
+    "_id": "6949f248c38f14fe63c3ecad",
+    "email": "mason.martin@company.com",
+    "password": "$2b$12$Qwv/1gOHNZAY6/nx/hgk2uYma1XKPgcv6Kx6w49nx7B32RSGkNi6q",
+    "firstName": "Mason",
+    "lastName": "Martin",
+    "phone": "+12473023169",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "light",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:12.965Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f242c38f14fe63c3ec77",
+    "joinedCompanyAt": "2025-12-23T01:37:13.303Z"
+  },
+  {
+    "_id": "6949f249c38f14fe63c3ecaf",
+    "email": "james.jones@outlook.com",
+    "password": "$2b$12$9Gz1qMS8.OkxYNcHMStaBOmwWymgK2yYk1Qf3VFfb.56B0Os1NeNu",
+    "firstName": "James",
+    "lastName": "Jones",
+    "phone": "+17184894004",
+    "globalRole": "manager",
+    "preferences": {
+      "theme": "dark",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-23T01:37:13.259Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 1,
+    "companyId": "6949f242c38f14fe63c3ec79",
+    "joinedCompanyAt": "2025-12-23T01:37:13.303Z"
+  },
+  {
+    "_id": "694c0abd8ce0f68a540cba8b",
+    "email": "test02@gmail.com",
+    "password": "$2b$12$6GR4m1cqefTF0g7GQIML6u4raK7FW4QQjnVOeOYkgUPr0EeNyDfAW",
+    "firstName": "test",
+    "lastName": "test",
+    "phone": "",
+    "globalRole": "manager",
+    "primaryCompanyId": null,
+    "preferences": {
+      "theme": "auto",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-24T15:46:05.745Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 0
+  },
+  {
+    "_id": "694c188888bd0a3203cc0e4a",
+    "email": "serineagent@example.com",
+    "password": "$2b$12$l.olldeNfBdDdeoMigjnm.jKOrm72nkjZgQ4Cj.WpQ0FZcNQJTPA6",
+    "firstName": "serine",
+    "lastName": "gacem",
+    "phone": "",
+    "globalRole": "manager",
+    "primaryCompanyId": null,
+    "preferences": {
+      "theme": "auto",
+      "currency": "USD",
+      "language": "en"
+    },
+    "createdAt": "2025-12-24T16:44:56.188Z",
+    "updatedAt": "2026-01-14T12:31:39.808Z",
+    "__v": 0
+  }
+]

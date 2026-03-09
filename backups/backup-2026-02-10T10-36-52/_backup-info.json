@@ -1,0 +1,36 @@
+{
+  "database": "expenseflow",
+  "timestamp": "2026-02-10T10:36:52.956Z",
+  "collections": [
+    {
+      "name": "auditlogs",
+      "documentCount": 0,
+      "file": "auditlogs.json"
+    },
+    {
+      "name": "companies",
+      "documentCount": 5,
+      "file": "companies.json"
+    },
+    {
+      "name": "users",
+      "documentCount": 24,
+      "file": "users.json"
+    },
+    {
+      "name": "invitations",
+      "documentCount": 0,
+      "file": "invitations.json"
+    },
+    {
+      "name": "expenses",
+      "documentCount": 155,
+      "file": "expenses.json"
+    },
+    {
+      "name": "budgets",
+      "documentCount": 34,
+      "file": "budgets.json"
+    }
+  ]
+}
