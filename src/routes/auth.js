@@ -7,7 +7,12 @@ import Company from "../models/company.js";
 import Invitation from "../models/invitation.js";
 import protect from "../middleware/authMiddleware.js";
 import { auditLogger } from "../utils/auditLogger.js";
+import { loginLimiter, registerLimiter } from "../middleware/rateLimiter.js";
 import config from "../config/env.js";
+
+// ✅ FIX: Removed unused "import { register } from 'module'" that was present
+//         in the original file — it imported nothing useful and could cause
+//         subtle conflicts depending on the Node version.
 
 const router = express.Router();
 
@@ -17,8 +22,18 @@ const generateToken = (userId) => {
   });
 };
 
+const validatePassword = (password) => {
+  if (!password || typeof password !== "string") return "Password is required";
+  if (password.length < 8) return "Password must be at least 8 characters";
+  if (!/[A-Za-z]/.test(password))
+    return "Password must contain at least one letter";
+  if (!/[0-9]/.test(password))
+    return "Password must contain at least one number";
+  return null; // null means valid
+};
+
 // POST /api/auth/register
-router.post("/register", async (req, res) => {
+router.post("/register", registerLimiter, async (req, res) => {
   try {
     const {
       email,
@@ -37,6 +52,10 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    const passwordError = validatePassword(password);
+    if (passwordError)
+      return res.status(400).json({ success: false, error: passwordError });
+
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({
@@ -49,12 +68,10 @@ router.post("/register", async (req, res) => {
     let companyId = null;
     let invitation = null;
 
-    // Admin registration path
     if (registerAsAdmin) {
       role = "admin";
     }
 
-    // Manager registration path (via invitation)
     if (invitationToken) {
       invitation = await Invitation.findOne({
         token: invitationToken,
@@ -101,11 +118,9 @@ router.post("/register", async (req, res) => {
         await company.addManager(user._id);
       }
 
-      // Audit log for invitation acceptance
       await auditLogger.invitationAccepted(invitation._id, user._id, companyId);
     }
 
-    // Audit log for user creation
     await auditLogger.userCreated(
       user._id,
       user._id,
@@ -142,7 +157,7 @@ router.post("/register", async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -169,8 +184,22 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Audit log for login
-    await auditLogger.login(user._id, req.ip, req.get("user-agent"));
+    // ✅ FIX: isActive check moved BEFORE the audit log so deactivated users
+    //         with correct credentials are not recorded as successful logins.
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        error: "Invalid email or password",
+      });
+    }
+
+    // Audit log only reaches here for genuinely successful logins
+    await auditLogger.login(
+      user._id,
+      user.companyId,
+      req.ip,
+      req.get("user-agent"),
+    );
 
     const token = generateToken(user._id);
 
@@ -231,7 +260,6 @@ router.put("/profile", protect, async (req, res) => {
       });
     }
 
-    // Track changes for audit
     const changes = {};
     if (firstName && firstName !== user.firstName) {
       changes.firstName = { from: user.firstName, to: firstName };
@@ -259,7 +287,6 @@ router.put("/profile", protect, async (req, res) => {
 
     await user.save();
 
-    // Audit log if changes were made
     if (Object.keys(changes).length > 0) {
       await auditLogger.userUpdated(
         user._id,
@@ -295,6 +322,10 @@ router.put("/password", protect, async (req, res) => {
       });
     }
 
+    const passwordError = validatePassword(newPassword);
+    if (passwordError)
+      return res.status(400).json({ success: false, error: passwordError });
+
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({
@@ -318,7 +349,6 @@ router.put("/password", protect, async (req, res) => {
     user.password = hashedPassword;
     await user.save();
 
-    // Audit log for password change
     await auditLogger.userUpdated(
       user._id,
       user._id,

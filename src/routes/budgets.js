@@ -12,56 +12,19 @@ const router = express.Router();
 // Helper function to check and send budget alerts
 async function checkAndSendBudgetAlerts(budget) {
   try {
-    // Calculate percentage used
-    const percentageUsed = (budget.currentSpending / budget.amount) * 100;
-
-    // Check if warning threshold reached (80%)
-    if (percentageUsed >= 80 && percentageUsed < 100) {
-      // Only send if not already in warning state
-      if (!budget.status || budget.status !== 'warning') {
-        budget.status = 'warning';
-        await budget.save();
-
-        // Get all admins and managers in company
-        const recipients = await User.find({
-          companyId: budget.companyId,
-          globalRole: { $in: ['admin', 'manager'] },
-          isActive: true
-        });
-
-        if (recipients.length > 0) {
-          await sendBudgetAlertEmail(budget, recipients, 'warning');
-        }
-      }
-    }
-
-    // Check if budget exceeded (100%)
-    if (percentageUsed >= 100) {
-      // Only send if not already in exceeded state
-      if (!budget.status || budget.status !== 'exceeded') {
-        budget.status = 'exceeded';
-        await budget.save();
-
-        // Get all admins and managers in company
-        const recipients = await User.find({
-          companyId: budget.companyId,
-          globalRole: { $in: ['admin', 'manager'] },
-          isActive: true
-        });
-
-        if (recipients.length > 0) {
-          await sendBudgetAlertEmail(budget, recipients, 'exceeded');
-        }
-      }
-    }
-
-    // Reset to on_track if back under 80%
-    if (percentageUsed < 80 && budget.status !== 'on_track') {
-      budget.status = 'on_track';
-      await budget.save();
+    const percentage = (budget.currentSpending / budget.amount) * 100;
+    const type = percentage >= 100 ? "exceeded" : percentage >= 80 ? "warning" : null;
+    if (!type) return;
+    const recipients = await User.find({
+      companyId: budget.companyId,
+      globalRole: { $in: ['admin', 'manager'] },
+      isActive: true
+    });
+    if (recipients.length > 0) {
+      await sendBudgetAlertEmail(budget, recipients, type);
     }
   } catch (error) {
-    console.error('Budget alert check failed (non-blocking):', error);
+    console.error("Budget alert check failed (non-blocking):", error);
   }
 }
 

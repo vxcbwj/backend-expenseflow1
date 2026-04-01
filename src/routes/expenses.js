@@ -17,7 +17,7 @@ import {
 
 const router = express.Router();
 
-// ✅ FIXED C3: Get valid departments from schema for validation
+// Get valid departments from schema for validation
 const getValidDepartments = () => {
   try {
     return Expense.schema.path("department").enumValues || [];
@@ -35,7 +35,7 @@ const getValidDepartments = () => {
   }
 };
 
-// ✅ FIXED C3: Department validation helper
+// Department validation helper
 const validateDepartment = (dept) => {
   if (!dept) return false;
   return getValidDepartments().includes(dept);
@@ -67,7 +67,16 @@ router.post(
         });
       }
 
-      // ✅ FIXED C3: Validate department before creating
+      // ✅ FIX: Validate amount is a positive number
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Amount must be a positive number",
+        });
+      }
+
+      // Validate department before creating
       if (!validateDepartment(department)) {
         return res.status(400).json({
           success: false,
@@ -82,9 +91,9 @@ router.post(
         });
       }
 
-      // ✅ FIXED M5: Sanitize text fields
+      // Sanitize text fields and use parsedAmount
       const expense = await Expense.create({
-        amount,
+        amount: parsedAmount,
         category,
         department,
         description: sanitizeText(description),
@@ -98,7 +107,6 @@ router.post(
         createdBy: req.user.fullName,
       });
 
-      // Audit log
       await auditLogger.expenseCreated(
         expense._id,
         req.user._id,
@@ -134,80 +142,6 @@ router.post(
   },
 );
 
-// GET /api/expenses - Get expenses
-router.get(
-  "/",
-  protect,
-  requirePermission(PERMISSIONS.VIEW_ALL_EXPENSES),
-  async (req, res) => {
-    try {
-      const {
-        category,
-        department,
-        startDate,
-        endDate,
-        status,
-        page = 1,
-        limit = 50,
-      } = req.query;
-
-      if (!req.user.companyId) {
-        return res.json({
-          success: true,
-          expenses: [],
-          count: 0,
-          total: 0,
-        });
-      }
-
-      // ✅ FIXED C3: Validate department filter before using
-      if (department && !validateDepartment(department)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid department value. Allowed: ${getValidDepartments().join(", ")}`,
-        });
-      }
-
-      // ✅ FIXED M6: Enforce max pagination limit of 500
-      const MAX_PAGE_SIZE = 500;
-      const safePage = Math.max(1, parseInt(page) || 1);
-      const safeLimit = Math.min(parseInt(limit) || 50, MAX_PAGE_SIZE);
-
-      const options = {
-        startDate: startDate || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-        endDate: endDate || new Date(),
-        category,
-        department,
-        status,
-      };
-
-      const query = Expense.findByCompany(req.user.companyId, options);
-
-      const skip = (safePage - 1) * safeLimit;
-      const [expenses, total] = await Promise.all([
-        query.skip(skip).limit(safeLimit),
-        Expense.countDocuments(query.getQuery()),
-      ]);
-
-      res.json({
-        success: true,
-        expenses,
-        count: expenses.length,
-        total,
-        page: safePage,
-        limit: safeLimit,
-        totalPages: Math.ceil(total / safeLimit),
-      });
-    } catch (error) {
-      console.error("Get expenses error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to fetch expenses",
-      });
-    }
-  },
-);
-
 // GET /api/expenses/meta - Get expense metadata
 router.get("/meta", protect, async (req, res) => {
   try {
@@ -234,345 +168,6 @@ router.get("/meta", protect, async (req, res) => {
     });
   }
 });
-
-// GET /api/expenses/:id - Get single expense
-router.get("/:id", protect, async (req, res) => {
-  try {
-    const expense = await Expense.findById(req.params.id)
-      .populate("userId", "firstName lastName email avatar")
-      .populate("approvedBy", "firstName lastName email");
-
-    if (!expense) {
-      return res.status(404).json({
-        success: false,
-        error: "Expense not found",
-      });
-    }
-
-    if (!req.user.canAccessCompany(expense.companyId)) {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied to this expense",
-      });
-    }
-
-    res.json({
-      success: true,
-      expense,
-    });
-  } catch (error) {
-    console.error("Get expense error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch expense",
-    });
-  }
-});
-
-// PUT /api/expenses/:id - Update expense
-router.put(
-  "/:id",
-  protect,
-  requirePermission(PERMISSIONS.EDIT_EXPENSES),
-  async (req, res) => {
-    try {
-      const expense = await Expense.findById(req.params.id);
-
-      if (!expense) {
-        return res.status(404).json({
-          success: false,
-          error: "Expense not found",
-        });
-      }
-
-      if (!req.user.canAccessCompany(expense.companyId)) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied to this expense",
-        });
-      }
-
-      const {
-        amount,
-        category,
-        department,
-        description,
-        date,
-        vendor,
-        paymentMethod,
-        receiptUrl,
-        notes,
-        status,
-      } = req.body;
-
-      // ✅ FIXED C7: Block status changes via PUT - require approval/rejection endpoints
-      if (status !== undefined && status !== null) {
-        return res.status(403).json({
-          success: false,
-          error: "Status changes require approval/rejection endpoints",
-          code: "STATUS_CHANGE_NOT_ALLOWED",
-        });
-      }
-
-      // ✅ FIXED C3: Validate department if provided
-      if (department && !validateDepartment(department)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid department value. Allowed: ${getValidDepartments().join(", ")}`,
-        });
-      }
-
-      // Track changes for audit
-      const changes = {};
-      if (amount !== undefined && amount !== expense.amount) {
-        changes.amount = { from: expense.amount, to: amount };
-        expense.amount = amount;
-      }
-      if (category && category !== expense.category) {
-        changes.category = { from: expense.category, to: category };
-        expense.category = category;
-      }
-      if (department && department !== expense.department) {
-        changes.department = { from: expense.department, to: department };
-        expense.department = department;
-      }
-      if (description && description !== expense.description) {
-        changes.description = {
-          from: expense.description,
-          to: sanitizeText(description),
-        };
-        expense.description = sanitizeText(description);
-      }
-      if (date && date !== expense.date) {
-        changes.date = { from: expense.date, to: date };
-        expense.date = date;
-      }
-      if (vendor !== undefined && vendor !== expense.vendor) {
-        changes.vendor = { from: expense.vendor, to: sanitizeText(vendor) };
-        expense.vendor = sanitizeText(vendor);
-      }
-      if (
-        paymentMethod !== undefined &&
-        paymentMethod !== expense.paymentMethod
-      ) {
-        changes.paymentMethod = {
-          from: expense.paymentMethod,
-          to: paymentMethod,
-        };
-        expense.paymentMethod = paymentMethod;
-      }
-      if (receiptUrl !== undefined && receiptUrl !== expense.receiptUrl) {
-        changes.receiptUrl = { from: expense.receiptUrl, to: receiptUrl };
-        expense.receiptUrl = receiptUrl;
-      }
-      if (notes !== undefined && notes !== expense.notes) {
-        changes.notes = { from: expense.notes, to: sanitizeText(notes) };
-        expense.notes = sanitizeText(notes);
-      }
-
-      await expense.save();
-
-      // Audit log if changes were made
-      if (Object.keys(changes).length > 0) {
-        await auditLogger.expenseUpdated(
-          expense._id,
-          req.user._id,
-          changes,
-          req.user.companyId,
-        );
-      }
-
-      res.json({
-        success: true,
-        message: "Expense updated successfully",
-        expense,
-      });
-    } catch (error) {
-      console.error("Update expense error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to update expense",
-      });
-    }
-  },
-);
-
-// DELETE /api/expenses/:id - Delete expense
-router.delete(
-  "/:id",
-  protect,
-  requirePermission(PERMISSIONS.DELETE_EXPENSES),
-  async (req, res) => {
-    try {
-      const expense = await Expense.findById(req.params.id);
-
-      if (!expense) {
-        return res.status(404).json({
-          success: false,
-          error: "Expense not found",
-        });
-      }
-
-      if (!req.user.canAccessCompany(expense.companyId)) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied to this expense",
-        });
-      }
-
-      // Audit log before deletion
-      await auditLogger.expenseDeleted(
-        expense._id,
-        req.user._id,
-        req.user.companyId,
-      );
-
-      await Expense.findByIdAndDelete(req.params.id);
-
-      res.json({
-        success: true,
-        message: "Expense deleted successfully",
-      });
-    } catch (error) {
-      console.error("Delete expense error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to delete expense",
-      });
-    }
-  },
-);
-
-// POST /api/expenses/:id/approve - Approve expense
-router.post(
-  "/:id/approve",
-  protect,
-  requirePermission(PERMISSIONS.EDIT_EXPENSES),
-  async (req, res) => {
-    try {
-      const expense = await Expense.findById(req.params.id);
-
-      if (!expense) {
-        return res.status(404).json({
-          success: false,
-          error: "Expense not found",
-        });
-      }
-
-      if (!req.user.canAccessCompany(expense.companyId)) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied",
-        });
-      }
-
-      await expense.approve(req.user._id);
-
-      // Audit log
-      await auditLogger.expenseApproved(
-        expense._id,
-        req.user._id,
-        {
-          amount: expense.amount,
-          category: expense.category,
-          department: expense.department,
-          description: expense.description,
-        },
-        req.user.companyId,
-      );
-
-      // Send approval email (non-blocking)
-      try {
-        await expense.populate("userId", "firstName lastName email");
-        await sendExpenseApprovedEmail(
-          expense,
-          {
-            firstName: req.user.firstName,
-            lastName: req.user.lastName,
-            email: req.user.email,
-          },
-          expense.userId,
-        );
-      } catch (emailError) {
-        console.error("Email send failed (non-blocking):", emailError);
-      }
-
-      res.json({
-        success: true,
-        message: "Expense approved successfully",
-        expense,
-      });
-    } catch (error) {
-      console.error("Approve expense error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to approve expense",
-      });
-    }
-  },
-);
-
-// POST /api/expenses/:id/reject - Reject expense
-router.post(
-  "/:id/reject",
-  protect,
-  requirePermission(PERMISSIONS.EDIT_EXPENSES),
-  async (req, res) => {
-    try {
-      const { reason } = req.body;
-      const expense = await Expense.findById(req.params.id);
-
-      if (!expense) {
-        return res.status(404).json({
-          success: false,
-          error: "Expense not found",
-        });
-      }
-
-      if (!req.user.canAccessCompany(expense.companyId)) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied",
-        });
-      }
-
-      await expense.reject();
-
-      // Audit log
-      await auditLogger.expenseRejected(
-        expense._id,
-        req.user._id,
-        {
-          amount: expense.amount,
-          category: expense.category,
-          department: expense.department,
-          description: expense.description,
-        },
-        req.user.companyId,
-      );
-
-      // Send rejection email (non-blocking)
-      try {
-        await expense.populate("userId", "firstName lastName email");
-        await sendExpenseRejectedEmail(expense, expense.userId, reason);
-      } catch (emailError) {
-        console.error("Email send failed (non-blocking):", emailError);
-      }
-
-      res.json({
-        success: true,
-        message: "Expense rejected successfully",
-        expense,
-      });
-    } catch (error) {
-      console.error("Reject expense error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to reject expense",
-      });
-    }
-  },
-);
 
 // GET /api/expenses/summary/totals - Get expense summary
 router.get("/summary/totals", protect, async (req, res) => {
@@ -712,10 +307,433 @@ router.get("/summary/departments", protect, async (req, res) => {
   }
 });
 
+// GET /api/expenses - Get expenses
+router.get(
+  "/",
+  protect,
+  requirePermission(PERMISSIONS.VIEW_ALL_EXPENSES),
+  async (req, res) => {
+    try {
+      const {
+        category,
+        department,
+        startDate,
+        endDate,
+        status,
+        page = 1,
+        limit = 50,
+      } = req.query;
+
+      if (!req.user.companyId) {
+        return res.json({
+          success: true,
+          expenses: [],
+          count: 0,
+          total: 0,
+        });
+      }
+
+      // Validate department filter before using
+      if (department && !validateDepartment(department)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid department value. Allowed: ${getValidDepartments().join(", ")}`,
+        });
+      }
+
+      // ✅ FIX: Enforce max pagination limit of 500
+      const MAX_PAGE_SIZE = 500;
+      const safePage = Math.max(1, parseInt(page) || 1);
+      const safeLimit = Math.min(parseInt(limit) || 50, MAX_PAGE_SIZE);
+
+      // ✅ FIX: Remove hidden 90-day default — only filter by date when caller provides dates
+      const options = {
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate }),
+        ...(category && { category }),
+        ...(department && { department }),
+        ...(status && { status }),
+      };
+
+      const query = Expense.findByCompany(req.user.companyId, options);
+
+      const skip = (safePage - 1) * safeLimit;
+      const [expenses, total] = await Promise.all([
+        query.skip(skip).limit(safeLimit),
+        Expense.countDocuments(query.getQuery()),
+      ]);
+
+      res.json({
+        success: true,
+        expenses,
+        count: expenses.length,
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
+      });
+    } catch (error) {
+      console.error("Get expenses error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch expenses",
+      });
+    }
+  },
+);
+
+// GET /api/expenses/:id - Get single expense
+router.get("/:id", protect, async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id)
+      .populate("userId", "firstName lastName email avatar")
+      .populate("approvedBy", "firstName lastName email");
+
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        error: "Expense not found",
+      });
+    }
+
+    if (!req.user.canAccessCompany(expense.companyId)) {
+      return res.status(403).json({
+        success: false,
+        error: "Access denied to this expense",
+      });
+    }
+
+    res.json({
+      success: true,
+      expense,
+    });
+  } catch (error) {
+    console.error("Get expense error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch expense",
+    });
+  }
+});
+
+// PUT /api/expenses/:id - Update expense
+router.put(
+  "/:id",
+  protect,
+  requirePermission(PERMISSIONS.EDIT_EXPENSES),
+  async (req, res) => {
+    try {
+      const expense = await Expense.findById(req.params.id);
+
+      if (!expense) {
+        return res.status(404).json({
+          success: false,
+          error: "Expense not found",
+        });
+      }
+
+      if (!req.user.canAccessCompany(expense.companyId)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied to this expense",
+        });
+      }
+
+      const {
+        amount,
+        category,
+        department,
+        description,
+        date,
+        vendor,
+        paymentMethod,
+        receiptUrl,
+        notes,
+        status,
+      } = req.body;
+
+      // Block status changes via PUT — require approval/rejection endpoints
+      if (status !== undefined && status !== null) {
+        return res.status(403).json({
+          success: false,
+          error: "Status changes require approval/rejection endpoints",
+          code: "STATUS_CHANGE_NOT_ALLOWED",
+        });
+      }
+
+      // Validate department if provided
+      if (department && !validateDepartment(department)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid department value. Allowed: ${getValidDepartments().join(", ")}`,
+        });
+      }
+
+      // ✅ FIX: Validate amount if provided
+      if (amount !== undefined) {
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: "Amount must be a positive number",
+          });
+        }
+      }
+
+      const changes = {};
+      if (amount !== undefined && parseFloat(amount) !== expense.amount) {
+        const parsedAmount = parseFloat(amount);
+        changes.amount = { from: expense.amount, to: parsedAmount };
+        expense.amount = parsedAmount;
+      }
+      if (category && category !== expense.category) {
+        changes.category = { from: expense.category, to: category };
+        expense.category = category;
+      }
+      if (department && department !== expense.department) {
+        changes.department = { from: expense.department, to: department };
+        expense.department = department;
+      }
+      if (description && description !== expense.description) {
+        changes.description = {
+          from: expense.description,
+          to: sanitizeText(description),
+        };
+        expense.description = sanitizeText(description);
+      }
+      if (date && date !== expense.date) {
+        changes.date = { from: expense.date, to: date };
+        expense.date = date;
+      }
+      if (vendor !== undefined && vendor !== expense.vendor) {
+        changes.vendor = { from: expense.vendor, to: sanitizeText(vendor) };
+        expense.vendor = sanitizeText(vendor);
+      }
+      if (
+        paymentMethod !== undefined &&
+        paymentMethod !== expense.paymentMethod
+      ) {
+        changes.paymentMethod = {
+          from: expense.paymentMethod,
+          to: paymentMethod,
+        };
+        expense.paymentMethod = paymentMethod;
+      }
+      if (receiptUrl !== undefined && receiptUrl !== expense.receiptUrl) {
+        changes.receiptUrl = { from: expense.receiptUrl, to: receiptUrl };
+        expense.receiptUrl = receiptUrl;
+      }
+      if (notes !== undefined && notes !== expense.notes) {
+        changes.notes = { from: expense.notes, to: sanitizeText(notes) };
+        expense.notes = sanitizeText(notes);
+      }
+
+      await expense.save();
+
+      if (Object.keys(changes).length > 0) {
+        await auditLogger.expenseUpdated(
+          expense._id,
+          req.user._id,
+          changes,
+          req.user.companyId,
+        );
+      }
+
+      res.json({
+        success: true,
+        message: "Expense updated successfully",
+        expense,
+      });
+    } catch (error) {
+      console.error("Update expense error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update expense",
+      });
+    }
+  },
+);
+
+// DELETE /api/expenses/:id - Delete expense
+router.delete(
+  "/:id",
+  protect,
+  requirePermission(PERMISSIONS.DELETE_EXPENSES),
+  async (req, res) => {
+    try {
+      // ✅ FIX: Use expenseToDelete to avoid redeclaration conflict with other
+      //         routes in the same file, and call .deleteOne() on the document
+      //         instance so the pre-deleteOne Cloudinary cleanup hook fires.
+      const expenseToDelete = await Expense.findById(req.params.id);
+
+      if (!expenseToDelete) {
+        return res.status(404).json({
+          success: false,
+          error: "Expense not found",
+        });
+      }
+
+      if (!req.user.canAccessCompany(expenseToDelete.companyId)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied to this expense",
+        });
+      }
+
+      // Audit before deletion so we still have the document data
+      await auditLogger.expenseDeleted(
+        expenseToDelete._id,
+        req.user._id,
+        req.user.companyId,
+      );
+
+      // Triggers pre-deleteOne hook → Cloudinary receipt cleanup
+      await expenseToDelete.deleteOne();
+
+      res.json({
+        success: true,
+        message: "Expense deleted successfully",
+      });
+    } catch (error) {
+      console.error("Delete expense error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete expense",
+      });
+    }
+  },
+);
+
+// POST /api/expenses/:id/approve - Approve expense
+router.post(
+  "/:id/approve",
+  protect,
+  requirePermission(PERMISSIONS.EDIT_EXPENSES),
+  async (req, res) => {
+    try {
+      const expense = await Expense.findById(req.params.id);
+
+      if (!expense) {
+        return res.status(404).json({
+          success: false,
+          error: "Expense not found",
+        });
+      }
+
+      if (!req.user.canAccessCompany(expense.companyId)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied",
+        });
+      }
+
+      await expense.approve(req.user._id);
+
+      await auditLogger.expenseApproved(
+        expense._id,
+        req.user._id,
+        {
+          amount: expense.amount,
+          category: expense.category,
+          department: expense.department,
+          description: expense.description,
+        },
+        req.user.companyId,
+      );
+
+      try {
+        await expense.populate("userId", "firstName lastName email");
+        await sendExpenseApprovedEmail(
+          expense,
+          {
+            firstName: req.user.firstName,
+            lastName: req.user.lastName,
+            email: req.user.email,
+          },
+          expense.userId,
+        );
+      } catch (emailError) {
+        console.error("Email send failed (non-blocking):", emailError);
+      }
+
+      res.json({
+        success: true,
+        message: "Expense approved successfully",
+        expense,
+      });
+    } catch (error) {
+      console.error("Approve expense error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to approve expense",
+      });
+    }
+  },
+);
+
+// POST /api/expenses/:id/reject - Reject expense
+router.post(
+  "/:id/reject",
+  protect,
+  requirePermission(PERMISSIONS.EDIT_EXPENSES),
+  async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const expense = await Expense.findById(req.params.id);
+
+      if (!expense) {
+        return res.status(404).json({
+          success: false,
+          error: "Expense not found",
+        });
+      }
+
+      if (!req.user.canAccessCompany(expense.companyId)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied",
+        });
+      }
+
+      await expense.reject();
+
+      await auditLogger.expenseRejected(
+        expense._id,
+        req.user._id,
+        {
+          amount: expense.amount,
+          category: expense.category,
+          department: expense.department,
+          description: expense.description,
+        },
+        req.user.companyId,
+      );
+
+      try {
+        await expense.populate("userId", "firstName lastName email");
+        await sendExpenseRejectedEmail(expense, expense.userId, reason);
+      } catch (emailError) {
+        console.error("Email send failed (non-blocking):", emailError);
+      }
+
+      res.json({
+        success: true,
+        message: "Expense rejected successfully",
+        expense,
+      });
+    } catch (error) {
+      console.error("Reject expense error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to reject expense",
+      });
+    }
+  },
+);
+
 // POST /api/expenses/:id/receipts - Upload receipts
 router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
   try {
-    // 1. Find expense
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
@@ -725,7 +743,6 @@ router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
       });
     }
 
-    // ✅ FIXED C1: Use canAccessCompany() consistently
     if (!req.user.canAccessCompany(expense.companyId)) {
       return res.status(403).json({
         success: false,
@@ -733,7 +750,6 @@ router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
       });
     }
 
-    // 3. Check if files were uploaded
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
@@ -741,7 +757,6 @@ router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
       });
     }
 
-    // 4. Check total receipts won't exceed limit
     const totalReceipts = expense.receipts.length + req.files.length;
     if (totalReceipts > 5) {
       return res.status(400).json({
@@ -750,7 +765,6 @@ router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
       });
     }
 
-    // 5. Upload files to Cloudinary
     const uploadedReceipts = [];
     const uploadErrors = [];
 
@@ -780,7 +794,6 @@ router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
       }
     }
 
-    // 6. If all uploads failed, return error
     if (uploadErrors.length > 0 && uploadErrors.length === req.files.length) {
       return res.status(500).json({
         success: false,
@@ -789,23 +802,27 @@ router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
       });
     }
 
-    // 7. Add receipts to expense
+    // ✅ FIX: Save receipts then re-fetch so response reflects true saved state
     await expense.addReceipts(uploadedReceipts);
+    const updatedExpense = await Expense.findById(expense._id);
 
-    // 8. Audit log
     await auditLogger.expenseUpdated(
       expense._id,
       req.user._id,
-      { receipts: uploadedReceipts.length },
+      {
+        receiptsAdded: uploadedReceipts.length,
+        totalReceipts: updatedExpense.receipts.length,
+      },
       req.user.companyId,
     );
 
-    // 9. Return response
     res.status(200).json({
       success: true,
       message: `${uploadedReceipts.length} receipt(s) uploaded successfully`,
       receipts: uploadedReceipts,
-      expense: expense,
+      expense: updatedExpense,
+      totalReceipts: updatedExpense.receipts.length,
+      remainingSlots: 5 - updatedExpense.receipts.length,
       errors: uploadErrors.length > 0 ? uploadErrors : undefined,
     });
   } catch (error) {
@@ -820,7 +837,6 @@ router.post("/:id/receipts", protect, uploadMiddleware, async (req, res) => {
 // DELETE /api/expenses/:id/receipts/:receiptId - Delete receipt
 router.delete("/:id/receipts/:receiptId", protect, async (req, res) => {
   try {
-    // 1. Find expense
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
@@ -830,7 +846,6 @@ router.delete("/:id/receipts/:receiptId", protect, async (req, res) => {
       });
     }
 
-    // ✅ FIXED C1: Use canAccessCompany() consistently
     if (!req.user.canAccessCompany(expense.companyId)) {
       return res.status(403).json({
         success: false,
@@ -838,7 +853,6 @@ router.delete("/:id/receipts/:receiptId", protect, async (req, res) => {
       });
     }
 
-    // 3. Find receipt in array
     const receipt = expense.receipts.find(
       (r) => r._id.toString() === req.params.receiptId,
     );
@@ -850,13 +864,12 @@ router.delete("/:id/receipts/:receiptId", protect, async (req, res) => {
       });
     }
 
-    // 4. Delete from Cloudinary
     await deleteReceiptFromCloudinary(receipt.cloudinaryId);
-
-    // 5. Remove from expense
     await expense.removeReceipt(req.params.receiptId);
 
-    // 6. Audit log
+    // Re-fetch so response reflects true saved state
+    const updatedExpense = await Expense.findById(expense._id);
+
     await auditLogger.expenseUpdated(
       expense._id,
       req.user._id,
@@ -864,11 +877,12 @@ router.delete("/:id/receipts/:receiptId", protect, async (req, res) => {
       req.user.companyId,
     );
 
-    // 7. Return response
     res.status(200).json({
       success: true,
       message: "Receipt deleted successfully",
-      expense: expense,
+      expense: updatedExpense,
+      totalReceipts: updatedExpense.receipts.length,
+      remainingSlots: 5 - updatedExpense.receipts.length,
     });
   } catch (error) {
     console.error("❌ Delete receipt error:", error);
@@ -882,7 +896,6 @@ router.delete("/:id/receipts/:receiptId", protect, async (req, res) => {
 // GET /api/expenses/:id/receipts/:receiptId - Get receipt URL
 router.get("/:id/receipts/:receiptId", protect, async (req, res) => {
   try {
-    // 1. Find expense
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
@@ -892,7 +905,6 @@ router.get("/:id/receipts/:receiptId", protect, async (req, res) => {
       });
     }
 
-    // ✅ FIXED C1: Use canAccessCompany() consistently
     if (!req.user.canAccessCompany(expense.companyId)) {
       return res.status(403).json({
         success: false,
@@ -900,7 +912,6 @@ router.get("/:id/receipts/:receiptId", protect, async (req, res) => {
       });
     }
 
-    // 3. Find receipt
     const receipt = expense.receipts.find(
       (r) => r._id.toString() === req.params.receiptId,
     );
@@ -912,7 +923,6 @@ router.get("/:id/receipts/:receiptId", protect, async (req, res) => {
       });
     }
 
-    // 4. Return receipt URL
     res.status(200).json({
       success: true,
       url: receipt.fileUrl,

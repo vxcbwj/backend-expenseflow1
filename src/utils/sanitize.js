@@ -8,12 +8,14 @@
  * Sanitize text input to prevent XSS attacks
  * Removes potentially dangerous characters and HTML tags
  * @param {string} text - The text to sanitize
- * @returns {string} - Sanitized text
+ * @returns {string|null|undefined} - Sanitized text, or original null/undefined preserved
  */
 export const sanitizeText = (text) => {
-  if (!text || typeof text !== "string") {
-    return "";
-  }
+  // ✅ FIX: Preserve null/undefined so optional fields like vendor and notes
+  //         are stored as null in MongoDB instead of "", which would break
+  //         frontend truthiness checks like `if (expense.vendor)`.
+  if (text === undefined || text === null) return text;
+  if (typeof text !== "string") return "";
 
   return text
     .replace(/[<>]/g, "") // Remove < and > to prevent HTML injection

@@ -347,12 +347,13 @@ export const auditLogger = {
     }),
 
   // System actions
-  login: (userId, ipAddress, userAgent) =>
+  login: (userId, companyId, ipAddress, userAgent) =>
     logAction({
       action: "LOGIN",
       entity: "System",
       entityId: userId,
       userId,
+      companyId: companyId || null,
       details: {},
       ipAddress,
       userAgent,

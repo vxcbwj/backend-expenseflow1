@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import { deleteReceiptFromCloudinary } from "../utils/cloudinary.js";
 
-// ✅ ADDED: Helper function to validate receipts array length
+// Helper function to validate receipts array length
 function arrayLimit(val) {
   return val.length <= 5;
 }
@@ -36,6 +36,7 @@ const expenseSchema = new mongoose.Schema(
         "Advertising",
         "Legal",
         "Taxes",
+        "Other",
       ],
     },
 
@@ -172,8 +173,8 @@ const expenseSchema = new mongoose.Schema(
           },
         },
       ],
-      validate: [arrayLimit, "{PATH} exceeds the limit of 5 receipts"], // ✅ ADDED: Validation
-      default: [], // ✅ ADDED: Default empty array
+      validate: [arrayLimit, "{PATH} exceeds the limit of 5 receipts"],
+      default: [],
     },
 
     approvedBy: {
@@ -201,12 +202,12 @@ expenseSchema.index({ userId: 1, date: -1 });
 expenseSchema.index({ companyId: 1, userId: 1, date: -1 });
 expenseSchema.index({ companyId: 1, status: 1 });
 
-// ✅ ADDED: Virtual for total receipts count
+// Virtual for total receipts count
 expenseSchema.virtual("receiptCount").get(function () {
   return this.receipts ? this.receipts.length : 0;
 });
 
-// ✅ ADDED: Virtual for checking if more receipts can be added
+// Virtual for checking if more receipts can be added
 expenseSchema.virtual("canAddReceipts").get(function () {
   return this.receiptCount < 5;
 });
@@ -305,7 +306,7 @@ expenseSchema.statics.findByCompany = function (companyId, options = {}) {
   return this.find(query).sort({ date: -1, createdAt: -1 });
 };
 
-// ✅ ADDED: Static method to get expenses by category for budget tracking
+// Static method to get expenses by category for budget tracking
 expenseSchema.statics.getCategorySpending = async function (
   companyId,
   category,
@@ -315,7 +316,7 @@ expenseSchema.statics.getCategorySpending = async function (
   const matchStage = {
     companyId,
     category,
-    status: { $in: ["approved", "paid"] }, // Only count approved/paid
+    status: { $in: ["approved", "paid"] },
   };
 
   if (startDate || endDate) {
@@ -366,7 +367,7 @@ expenseSchema.methods.duplicate = async function (newDate = new Date()) {
     approvedAt: undefined,
     createdAt: undefined,
     updatedAt: undefined,
-    receipts: [], // ✅ CHANGED: Don't duplicate receipts
+    receipts: [],
   });
 
   return duplicatedExpense.save();
@@ -374,7 +375,6 @@ expenseSchema.methods.duplicate = async function (newDate = new Date()) {
 
 // Instance method: Add receipts
 expenseSchema.methods.addReceipts = async function (receiptsData) {
-  // ✅ ADDED: Validation before adding
   if (this.receipts.length + receiptsData.length > 5) {
     throw new Error(
       `Cannot add ${receiptsData.length} receipts. Maximum is 5, currently have ${this.receipts.length}`,
@@ -395,7 +395,6 @@ expenseSchema.methods.removeReceipt = async function (receiptId) {
     throw new Error("Receipt not found");
   }
 
-  // ✅ ADDED: Get receipt before removing for cleanup
   const receipt = this.receipts[receiptIndex];
 
   this.receipts = this.receipts.filter(
@@ -404,108 +403,130 @@ expenseSchema.methods.removeReceipt = async function (receiptId) {
 
   await this.save();
 
-  // ✅ ADDED: Return removed receipt for potential cleanup
   return receipt;
 };
 
-// ✅ FIXED C5: Middleware to sync budget spending when expense changes (atomic update)
+// Pre-save: track which fields changed so post-save hook knows whether to sync budget
+expenseSchema.pre("save", function (next) {
+  this._statusChanged = this.isModified("status");
+  this._amountChanged = this.isModified("amount");
+  this._categoryChanged = this.isModified("category");
+  next();
+});
+
+// Post-save: sync budget spending atomically when relevant fields change
+// ✅ FIX: mongoose.model("Budget") is wrapped in its own try/catch so if the
+//         Budget model hasn't been registered yet (e.g. during tests or early
+//         startup) the hook exits cleanly instead of throwing an unhandled error.
 expenseSchema.post("save", async function (doc) {
+  const shouldSync =
+    doc._statusChanged || doc._amountChanged || doc._categoryChanged;
+  if (!shouldSync) return;
+
   try {
-    // Only sync for approved/paid expenses
-    if (["approved", "paid"].includes(doc.status)) {
-      const Budget = mongoose.model("Budget");
+    if (!["approved", "paid"].includes(doc.status)) return;
 
-      // Find active budget for this category
-      const budget = await Budget.findOne({
-        companyId: doc.companyId,
-        category: doc.category,
-        isActive: true,
-        startDate: { $lte: doc.date },
-        $or: [{ endDate: { $gte: doc.date } }, { endDate: null }],
-      });
-
-      if (budget) {
-        // ✅ FIXED C5: Use atomic update instead of read-then-write
-        // This prevents race conditions from concurrent expense saves
-        const Expense = mongoose.model("Expense");
-        const spending = await Expense.getCategorySpending(
-          budget.companyId,
-          budget.category,
-          budget.startDate,
-          budget.endDate,
-        );
-
-        // Use atomic updateOne instead of find + save
-        await Budget.updateOne(
-          { _id: budget._id },
-          {
-            $set: {
-              currentSpending: spending.totalAmount,
-              updatedAt: new Date(),
-            },
-          },
-        );
-
-        console.log(
-          `✅ Budget synced (atomic): ${budget.category} = ${spending.totalAmount}`,
-        );
-      }
+    let Budget;
+    try {
+      Budget = mongoose.model("Budget");
+    } catch {
+      // Budget model not registered yet — skip sync safely
+      return;
     }
+
+    const budget = await Budget.findOne({
+      companyId: doc.companyId,
+      category: doc.category,
+      isActive: true,
+      startDate: { $lte: doc.date },
+      $or: [{ endDate: { $gte: doc.date } }, { endDate: null }],
+    });
+
+    if (!budget) return;
+
+    const Expense = mongoose.model("Expense");
+    const spending = await Expense.getCategorySpending(
+      budget.companyId,
+      budget.category,
+      budget.startDate,
+      budget.endDate,
+    );
+
+    // Atomic update — avoids race conditions from concurrent expense saves
+    await Budget.updateOne(
+      { _id: budget._id },
+      {
+        $set: {
+          currentSpending: spending.totalAmount,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    console.log(
+      `✅ Budget synced (atomic): ${budget.category} = ${spending.totalAmount}`,
+    );
   } catch (error) {
     console.error("Failed to sync budget spending:", error);
-    // Don't throw - this is a background operation
+    // Non-blocking — expense save already succeeded
   }
 });
 
-// ✅ FIXED C5: Middleware to sync budget when expense is deleted (atomic update)
+// Post-deleteOne: sync budget when an approved/paid expense is removed
+// ✅ FIX: Same guarded mongoose.model("Budget") pattern as post-save above.
 expenseSchema.post("deleteOne", { document: true }, async function (doc) {
   try {
-    if (["approved", "paid"].includes(doc.status)) {
-      const Budget = mongoose.model("Budget");
+    if (!["approved", "paid"].includes(doc.status)) return;
 
-      const budget = await Budget.findOne({
-        companyId: doc.companyId,
-        category: doc.category,
-        isActive: true,
-      });
-
-      if (budget) {
-        // ✅ FIXED C5: Use atomic update
-        const Expense = mongoose.model("Expense");
-        const spending = await Expense.getCategorySpending(
-          budget.companyId,
-          budget.category,
-          budget.startDate,
-          budget.endDate,
-        );
-
-        await Budget.updateOne(
-          { _id: budget._id },
-          {
-            $set: {
-              currentSpending: spending.totalAmount,
-              updatedAt: new Date(),
-            },
-          },
-        );
-
-        console.log(
-          `✅ Budget synced on delete (atomic): ${budget.category} = ${spending.totalAmount}`,
-        );
-      }
+    let Budget;
+    try {
+      Budget = mongoose.model("Budget");
+    } catch {
+      // Budget model not registered yet — skip sync safely
+      return;
     }
+
+    const budget = await Budget.findOne({
+      companyId: doc.companyId,
+      category: doc.category,
+      isActive: true,
+    });
+
+    if (!budget) return;
+
+    const Expense = mongoose.model("Expense");
+    const spending = await Expense.getCategorySpending(
+      budget.companyId,
+      budget.category,
+      budget.startDate,
+      budget.endDate,
+    );
+
+    await Budget.updateOne(
+      { _id: budget._id },
+      {
+        $set: {
+          currentSpending: spending.totalAmount,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    console.log(
+      `✅ Budget synced on delete (atomic): ${budget.category} = ${spending.totalAmount}`,
+    );
   } catch (error) {
     console.error("Failed to sync budget on expense deletion:", error);
   }
 });
 
-// Pre-remove hook for Cloudinary cleanup
+// Pre-deleteOne: clean up all receipts from Cloudinary before the document is removed
+// Must use { document: true, query: false } so `this` is the document instance.
 expenseSchema.pre(
   "deleteOne",
   { document: true, query: false },
   async function (next) {
     try {
-      // Delete all receipts from Cloudinary
       for (const receipt of this.receipts) {
         await deleteReceiptFromCloudinary(receipt.cloudinaryId);
       }

@@ -79,7 +79,7 @@ const connectDB = async () => {
 connectDB();
 
 // Routes
-app.use("/api/auth", loginLimiter, registerLimiter, authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/analytics", analyticsRoutes);
@@ -89,11 +89,19 @@ app.use("/api/audit-logs", auditLogRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  // 1 = connected, anything else = not ready
+  if (dbState !== 1) {
+    return res.status(503).json({
+      status: "UNAVAILABLE",
+      database: "disconnected",
+      timestamp: new Date().toISOString(),
+    });
+  }
   res.json({
     status: "OK",
     timestamp: new Date().toISOString(),
-    database:
-      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    database: "connected",
     uptime: process.uptime(),
   });
 });
