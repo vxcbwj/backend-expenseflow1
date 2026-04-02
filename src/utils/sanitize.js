@@ -1,12 +1,14 @@
 // backend/src/utils/sanitize.js
+import xss from "xss";
+
 /**
  * Text sanitization utilities
- * Simple regex-based approach without external dependencies
+ * Uses the `xss` package for comprehensive XSS protection.
  */
 
 /**
- * Sanitize text input to prevent XSS attacks
- * Removes potentially dangerous characters and HTML tags
+ * Sanitize text input to prevent XSS attacks.
+ * Uses the battle-tested `xss` library for comprehensive protection.
  * @param {string} text - The text to sanitize
  * @returns {string|null|undefined} - Sanitized text, or original null/undefined preserved
  */
@@ -17,12 +19,7 @@ export const sanitizeText = (text) => {
   if (text === undefined || text === null) return text;
   if (typeof text !== "string") return "";
 
-  return text
-    .replace(/[<>]/g, "") // Remove < and > to prevent HTML injection
-    .replace(/javascript:/gi, "") // Remove javascript: protocol
-    .replace(/on\w+\s*=/gi, "") // Remove event handlers (onclick, onload, etc.)
-    .replace(/data:text\/html/gi, "") // Remove data URLs
-    .trim();
+  return xss(text).trim();
 };
 
 /**

@@ -1,5 +1,9 @@
 import express from "express";
 import mongoose from "mongoose";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./src/config/swagger.js";
 
 // ✅ FIXED: Import config FIRST before anything else
 import config, { validateConfig } from "./src/config/env.js";
@@ -30,6 +34,9 @@ process.env.SUPPRESS_NO_CONFIG_WARNING = "true";
 
 // ✅ FIXED: Apply CORS before all other middleware (with whitelist)
 app.use(corsMiddleware);
+
+app.use(helmet());
+app.use(mongoSanitize());
 
 // Middleware
 app.use(express.json());
@@ -78,6 +85,11 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
+// ✅ Swagger UI — development only
+if (config.server.env !== "production") {
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
@@ -120,6 +132,7 @@ app.get("/", (req, res) => {
       budgets: "/api/budgets",
       invitations: "/api/invitations",
       auditLogs: "/api/audit-logs",
+      docs: config.server.env !== "production" ? "/api/docs" : null,
     },
   });
 });
@@ -132,15 +145,30 @@ app.use((req, res) => {
   });
 });
 
-// Error handler
+// ✅ Global error handler — distinguishes operational vs unexpected errors
 app.use((err, req, res, next) => {
+  // Log all errors server-side
   console.error("Server error:", err);
+
+  // Operational errors: known, intentional (thrown via AppError)
+  if (err.isOperational) {
+    return res.status(err.statusCode).json({
+      success: false,
+      status: err.status,
+      error: err.message,
+      ...(config.server.isDevelopment && { stack: err.stack }),
+    });
+  }
+
+  // Unexpected / programmer errors: don't leak details to client
   res.status(500).json({
     success: false,
-    error:
-      process.env.NODE_ENV === "development"
-        ? err.message
-        : "Internal server error",
+    status: "error",
+    error: "Internal server error",
+    ...(config.server.isDevelopment && {
+      details: err.message,
+      stack: err.stack,
+    }),
   });
 });
 
@@ -152,6 +180,9 @@ const server = app.listen(PORT, () => {
   console.log(`📊 Health: http://localhost:${PORT}/health`);
   console.log(`🔒 Environment: ${config.server.env}`);
   console.log(`🌍 CORS Origins: ${config.frontend.corsOrigins.join(", ")}`);
+  if (config.server.env !== "production") {
+    console.log(`📚 Swagger UI: http://localhost:${PORT}/api/docs`);
+  }
 });
 
 // Graceful shutdown

@@ -1,339 +1,180 @@
-// backend/src/routes/invitations.js - WITH AUDIT LOGGING
+// backend/src/routes/invitations.js
 import express from "express";
-import User from "../models/user.js";
-import Company from "../models/company.js";
-import Invitation from "../models/invitation.js";
 import protect from "../middleware/authMiddleware.js";
 import { requireAdmin } from "../utils/roles.js";
-import { auditLogger } from "../utils/auditLogger.js";
-import { sendInvitationEmail } from "../utils/emailService.js";
+import {
+  sendInvitation,
+  getInvitations,
+  verifyInvitation,
+  resendInvitation,
+  revokeInvitation,
+  removeManager,
+} from "../controllers/invitationController.js";
 
 const router = express.Router();
 
-// POST /api/invitations/send - Admin invites manager
-router.post("/send", protect, requireAdmin, async (req, res) => {
-  try {
-    const { email, message } = req.body;
+/**
+ * @swagger
+ * tags:
+ *   name: Invitations
+ *   description: Manager invitation management
+ */
 
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        error: "Email is required",
-      });
-    }
+/**
+ * @swagger
+ * /api/invitations/send:
+ *   post:
+ *     summary: Send an invitation to a new manager (Admin only)
+ *     tags: [Invitations]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               message: { type: string }
+ *     responses:
+ *       201:
+ *         description: Invitation sent successfully
+ *       400:
+ *         description: Validation error or invitation already sent
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/send", protect, requireAdmin, sendInvitation);
 
-    if (!req.user.companyId) {
-      return res.status(400).json({
-        success: false,
-        error: "You must create a company first",
-      });
-    }
+/**
+ * @swagger
+ * /api/invitations:
+ *   get:
+ *     summary: Get all invitations for the company (Admin only)
+ *     tags: [Invitations]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of invitations
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Admin role required
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/", protect, requireAdmin, getInvitations);
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        error: "User with this email already exists",
-      });
-    }
+/**
+ * @swagger
+ * /api/invitations/verify/{token}:
+ *   get:
+ *     summary: Verify an invitation token (public)
+ *     tags: [Invitations]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Valid invitation details
+ *       404:
+ *         description: Invalid or expired invitation
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/verify/:token", verifyInvitation);
 
-    const existingInvitation = await Invitation.findPendingByEmail(
-      email,
-      req.user.companyId
-    );
+/**
+ * @swagger
+ * /api/invitations/resend/{id}:
+ *   post:
+ *     summary: Resend an invitation (Admin only)
+ *     tags: [Invitations]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Invitation resent successfully
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Invitation not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/resend/:id", protect, requireAdmin, resendInvitation);
 
-    if (existingInvitation) {
-      return res.status(400).json({
-        success: false,
-        error: "Invitation already sent to this email",
-      });
-    }
+/**
+ * @swagger
+ * /api/invitations/revoke/{id}:
+ *   post:
+ *     summary: Revoke an invitation (Admin only)
+ *     tags: [Invitations]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Invitation revoked successfully
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Invitation not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/revoke/:id", protect, requireAdmin, revokeInvitation);
 
-    const invitation = await Invitation.create({
-      email: email.toLowerCase(),
-      companyId: req.user.companyId,
-      invitedBy: req.user._id,
-      role: "manager",
-      message,
-    });
-
-    // Audit log
-    await auditLogger.invitationSent(
-      invitation._id,
-      req.user._id,
-      {
-        email: invitation.email,
-        role: invitation.role,
-        expiresAt: invitation.expiresAt,
-      },
-      req.user.companyId
-    );
-
-    // Send invitation email (non-blocking)
-    try {
-      const company = await Company.findById(req.user.companyId);
-
-      await sendInvitationEmail(
-        invitation.email,
-        invitation.token,
-        `${req.user.firstName} ${req.user.lastName}`,
-        company?.name || 'ExpenseFlow'
-      );
-    } catch (emailError) {
-      console.error('Failed to send invitation email (non-blocking):', emailError);
-    }
-
-    console.log("📧 Invitation created:", {
-      email: invitation.email,
-      companyId: invitation.companyId,
-      link: invitation.getInvitationLink(),
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Invitation sent successfully",
-      invitation: {
-        id: invitation._id,
-        email: invitation.email,
-        expiresAt: invitation.expiresAt,
-        invitationLink: invitation.getInvitationLink(),
-      },
-    });
-  } catch (error) {
-    console.error("Send invitation error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to send invitation",
-    });
-  }
-});
-
-// GET /api/invitations - Get all invitations (Admin only)
-router.get("/", protect, requireAdmin, async (req, res) => {
-  try {
-    if (!req.user.companyId) {
-      return res.json({
-        success: true,
-        invitations: [],
-      });
-    }
-
-    const invitations = await Invitation.findByCompany(req.user.companyId);
-
-    res.json({
-      success: true,
-      invitations,
-      count: invitations.length,
-    });
-  } catch (error) {
-    console.error("Get invitations error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch invitations",
-    });
-  }
-});
-
-// GET /api/invitations/verify/:token - Verify invitation token
-router.get("/verify/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
-
-    const invitation = await Invitation.findActiveByToken(token)
-      .populate("companyId", "name industry logo")
-      .populate("invitedBy", "firstName lastName email");
-
-    if (!invitation) {
-      return res.status(404).json({
-        success: false,
-        error: "Invalid or expired invitation",
-      });
-    }
-
-    res.json({
-      success: true,
-      invitation: {
-        email: invitation.email,
-        role: invitation.role,
-        company: invitation.companyId,
-        invitedBy: invitation.invitedBy,
-        expiresAt: invitation.expiresAt,
-        message: invitation.message,
-      },
-    });
-  } catch (error) {
-    console.error("Verify invitation error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to verify invitation",
-    });
-  }
-});
-
-// POST /api/invitations/resend/:id - Resend invitation
-router.post("/resend/:id", protect, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const invitation = await Invitation.findById(id);
-
-    if (!invitation) {
-      return res.status(404).json({
-        success: false,
-        error: "Invitation not found",
-      });
-    }
-
-    if (invitation.companyId.toString() !== req.user.companyId?.toString()) {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied",
-      });
-    }
-
-    await invitation.regenerateToken();
-
-    // Audit log
-    await auditLogger.invitationSent(
-      invitation._id,
-      req.user._id,
-      {
-        email: invitation.email,
-        role: invitation.role,
-        action: "resent",
-        expiresAt: invitation.expiresAt,
-      },
-      req.user.companyId
-    );
-
-    console.log("📧 Invitation resent:", {
-      email: invitation.email,
-      link: invitation.getInvitationLink(),
-    });
-
-    res.json({
-      success: true,
-      message: "Invitation resent successfully",
-      invitation: {
-        id: invitation._id,
-        email: invitation.email,
-        expiresAt: invitation.expiresAt,
-        invitationLink: invitation.getInvitationLink(),
-      },
-    });
-  } catch (error) {
-    console.error("Resend invitation error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to resend invitation",
-    });
-  }
-});
-
-// POST /api/invitations/revoke/:id - Revoke invitation
-router.post("/revoke/:id", protect, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const invitation = await Invitation.findById(id);
-
-    if (!invitation) {
-      return res.status(404).json({
-        success: false,
-        error: "Invitation not found",
-      });
-    }
-
-    if (invitation.companyId.toString() !== req.user.companyId?.toString()) {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied",
-      });
-    }
-
-    await invitation.revoke();
-
-    // Audit log
-    await auditLogger.invitationRevoked(
-      invitation._id,
-      req.user._id,
-      req.user.companyId
-    );
-
-    res.json({
-      success: true,
-      message: "Invitation revoked successfully",
-    });
-  } catch (error) {
-    console.error("Revoke invitation error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to revoke invitation",
-    });
-  }
-});
-
-// DELETE /api/invitations/managers/:managerId - Remove manager (Admin only)
-router.delete(
-  "/managers/:managerId",
-  protect,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const { managerId } = req.params;
-
-      const manager = await User.findById(managerId);
-      if (!manager) {
-        return res.status(404).json({
-          success: false,
-          error: "Manager not found",
-        });
-      }
-
-      if (manager.companyId?.toString() !== req.user.companyId?.toString()) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied",
-        });
-      }
-
-      if (manager.globalRole !== "manager") {
-        return res.status(400).json({
-          success: false,
-          error: "Can only remove managers",
-        });
-      }
-
-      const company = await Company.findById(req.user.companyId);
-      if (company) {
-        await company.removeManager(managerId);
-      }
-
-      await manager.removeFromCompany();
-
-      // Audit log
-      await auditLogger.userUpdated(
-        manager._id,
-        req.user._id,
-        {
-          action: "removed_from_company",
-          companyId: req.user.companyId,
-        },
-        req.user.companyId
-      );
-
-      res.json({
-        success: true,
-        message: "Manager removed from company",
-      });
-    } catch (error) {
-      console.error("Remove manager error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to remove manager",
-      });
-    }
-  }
-);
+/**
+ * @swagger
+ * /api/invitations/managers/{managerId}:
+ *   delete:
+ *     summary: Remove a manager from the company (Admin only)
+ *     tags: [Invitations]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: managerId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Manager removed successfully
+ *       400:
+ *         description: Target user is not a manager
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: Manager not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete("/managers/:managerId", protect, requireAdmin, removeManager);
 
 export default router;

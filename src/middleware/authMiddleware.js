@@ -1,6 +1,7 @@
 // backend/src/middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
+import config from "../config/env.js";
 
 const DEBUG = process.env.NODE_ENV === "development";
 const TOKEN_PREFIX = "Bearer ";
@@ -56,7 +57,7 @@ const protect = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, config.jwt.secret);
     } catch (jwtError) {
       if (jwtError.name === "TokenExpiredError") {
         return res.status(401).json(createErrorResponse("EXPIRED_TOKEN"));
