@@ -49,7 +49,7 @@ export const createCompany = catchAsync(async (req, res, next) => {
   const company = await Company.create({
     name,
     industry,
-    currency: currency || "USD",
+    currency: currency || "DZD",
     description,
     logo,
     email,
@@ -60,7 +60,7 @@ export const createCompany = catchAsync(async (req, res, next) => {
     managerIds: [],
     isActive: true,
     settings: {
-      defaultCurrency: currency || "USD",
+      defaultCurrency: currency || "DZD",
       budgetAlerts: true,
       expenseApprovalRequired: false,
       expenseThreshold: 1000,

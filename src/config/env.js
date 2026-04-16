@@ -22,7 +22,10 @@ const config = {
 
   // Database configuration
   database: {
-    uri: process.env.MONGODB_URI,
+    uri: process.env.MONGODB_URI || 
+       (process.env.MONGODB_USER && process.env.MONGODB_PASS && process.env.MONGODB_HOST
+         ? `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@${process.env.MONGODB_HOST}/${process.env.MONGODB_DB || 'expenseflow'}?retryWrites=true&w=majority`
+         : null),
     options: {
       serverSelectionTimeoutMS: 5000,
       maxPoolSize: 10,
@@ -32,7 +35,10 @@ const config = {
 
   // Shorthand for compatibility
   mongodb: {
-    uri: process.env.MONGODB_URI,
+    uri: process.env.MONGODB_URI ||
+       (process.env.MONGODB_USER && process.env.MONGODB_PASS && process.env.MONGODB_HOST
+         ? `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@${process.env.MONGODB_HOST}/${process.env.MONGODB_DB || 'expenseflow'}?retryWrites=true&w=majority`
+         : null),
   },
 
   // JWT configuration
@@ -46,7 +52,7 @@ const config = {
   frontend: {
     url: process.env.FRONTEND_URL || "http://localhost:5173",
     corsOrigins: (
-      process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:3000"
+      process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000"
     )
       .split(",")
       .map((o) => o.trim()),

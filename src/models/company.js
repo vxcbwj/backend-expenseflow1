@@ -29,7 +29,7 @@ const companySchema = new mongoose.Schema(
 
     currency: {
       type: String,
-      default: "USD",
+      default: "DZD",
     },
 
     description: {
@@ -82,7 +82,7 @@ const companySchema = new mongoose.Schema(
     settings: {
       defaultCurrency: {
         type: String,
-        default: "USD",
+        default: "DZD",
       },
       budgetAlerts: {
         type: Boolean,

@@ -18,7 +18,7 @@ const COLORS = {
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'DZD'
   }).format(amount);
 };
 
