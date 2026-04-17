@@ -15,7 +15,9 @@
     "reset-db": "node scripts/resetDatabase.js",
     "seed:admin": "node scripts/seedFirstAdmin.js",
     "seed": "node scripts/seedDatabase.js",
-    "seed:dev": "nodemon scripts/seedDatabase.js"
+    "seed:dev": "nodemon scripts/seedDatabase.js",
+    "seed:phones": "node scripts/seedPhoneNumbers.js",
+    "migrate:phones": "node scripts/migratePhoneNumbers.js"
   },
   "dependencies": {
     "axios": "^1.13.2",
