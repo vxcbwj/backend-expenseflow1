@@ -4,7 +4,16 @@ import User from "../src/models/user.js";
 
 const formatAlgerianPhone = (digits) => {
   const national = digits.slice(3);
-  return `+213 ${national.slice(0, 3)} ${national.slice(3, 5)} ${national.slice(5, 7)} ${national.slice(7)}`;
+
+  if (national.length === 9) {
+    return `+213 ${national.slice(0, 3)} ${national.slice(3, 5)} ${national.slice(5, 7)} ${national.slice(7)}`;
+  }
+
+  if (national.length === 8) {
+    return `+213 ${national.slice(0, 2)} ${national.slice(2, 4)} ${national.slice(4, 6)} ${national.slice(6)}`;
+  }
+
+  return `+213 ${national}`;
 };
 
 const normalizePhone = (value) => {
@@ -13,15 +22,21 @@ const normalizePhone = (value) => {
   const trimmed = value.toString().trim();
   const digits = trimmed.replace(/\D/g, "");
 
-  if (digits.length === 10 && digits.startsWith("0")) {
+  if (digits.startsWith("0") && (digits.length === 10 || digits.length === 9)) {
     return formatAlgerianPhone(`213${digits.slice(1)}`);
   }
 
-  if (digits.startsWith("00213") && digits.length === 14) {
+  if (
+    digits.startsWith("00213") &&
+    (digits.length === 14 || digits.length === 13)
+  ) {
     return formatAlgerianPhone(digits.slice(2));
   }
 
-  if (digits.startsWith("213") && digits.length === 12) {
+  if (
+    digits.startsWith("213") &&
+    (digits.length === 12 || digits.length === 11)
+  ) {
     return formatAlgerianPhone(digits);
   }
 

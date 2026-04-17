@@ -5,14 +5,63 @@ import User from "../src/models/user.js";
 
 dotenv.config();
 
+const MOBILE_PREFIXES = ["5", "6", "7"];
+const LANDLINE_AREA_CODES = [
+  "21",
+  "23",
+  "31",
+  "41",
+  "30",
+  "32",
+  "33",
+  "34",
+  "35",
+  "36",
+  "37",
+  "38",
+  "39",
+  "40",
+  "42",
+  "43",
+  "44",
+  "45",
+  "46",
+  "47",
+  "48",
+  "49",
+  "20",
+  "22",
+  "24",
+];
+
 const formatAlgerianPhone = (digits) => {
   const national = digits.slice(3);
-  return `+213 ${national.slice(0, 3)} ${national.slice(3, 5)} ${national.slice(5, 7)} ${national.slice(7)}`;
+  if (national.length === 9) {
+    return `+213 ${national.slice(0, 3)} ${national.slice(3, 5)} ${national.slice(5, 7)} ${national.slice(7)}`;
+  }
+
+  if (national.length === 8) {
+    return `+213 ${national.slice(0, 2)} ${national.slice(2, 4)} ${national.slice(4, 6)} ${national.slice(6)}`;
+  }
+
+  return `+213 ${national}`;
 };
 
 const generateAlgerianPhone = (index) => {
-  const prefix = index % 2 === 0 ? "5" : "6";
-  const uniqueDigits = String(index + 1).padStart(8, "0");
+  const isLandline = index % 3 === 2;
+
+  if (isLandline) {
+    const areaCode = LANDLINE_AREA_CODES[index % LANDLINE_AREA_CODES.length];
+    const suffix = String(
+      Math.floor(index / LANDLINE_AREA_CODES.length) + 1,
+    ).padStart(6, "0");
+    return formatAlgerianPhone(`213${areaCode}${suffix}`);
+  }
+
+  const prefix = MOBILE_PREFIXES[index % MOBILE_PREFIXES.length];
+  const uniqueDigits = String(
+    Math.floor(index / MOBILE_PREFIXES.length) + 1,
+  ).padStart(8, "0");
   return formatAlgerianPhone(`213${prefix}${uniqueDigits}`);
 };
 
