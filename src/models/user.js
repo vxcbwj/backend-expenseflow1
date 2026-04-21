@@ -174,7 +174,10 @@ userSchema.methods.toSafeObject = function () {
     phone: userObj.phone,
     avatar: userObj.avatar,
     globalRole: userObj.globalRole,
-    companyId: userObj.companyId,
+    companyId:
+      userObj.companyId?._id?.toString() ||
+      userObj.companyId?.toString() ||
+      null,
     joinedCompanyAt: userObj.joinedCompanyAt,
     isActive: userObj.isActive, // ✅ ADDED
     preferences: userObj.preferences,
